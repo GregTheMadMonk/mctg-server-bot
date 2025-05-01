@@ -325,21 +325,25 @@ func telegram_api_loop(pipe_out io.WriteCloser) {
                     } else if update.Message.Text[0] == '/' && update.Message.From.Username == bot_admin_user {
                         fmt.Fprintf(pipe_out, "%s\n", update.Message.Text)
                     } else {
-                        fmt.Fprintf(
-                            pipe_out,
-                            "/say [@%s] says: %s\n",
-                            update.Message.From.Username,
-                            update.Message.Text,
-                        )
+                        for _, line := range strings.Split(update.Message.Text, "\n") {
+                            fmt.Fprintf(
+                                pipe_out,
+                                "/say [@%s] says: %s\n",
+                                update.Message.From.Username,
+                                line,
+                            )
+                        }
                     }
                 }
                 if update.EditedMessage != nil {
-                    fmt.Fprintf(
-                        pipe_out,
-                        "/say [@%s] corrects: %s\n",
-                        update.EditedMessage.From.Username,
-                        update.EditedMessage.Text,
-                    )
+                    for _, line := range strings.Split(update.EditedMessage.Text, "\n") {
+                        fmt.Fprintf(
+                            pipe_out,
+                            "/say [@%s] corrects: %s\n",
+                            update.EditedMessage.From.Username,
+                            line,
+                        )
+                    }
                 }
             }
         } else {
