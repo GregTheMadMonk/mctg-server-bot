@@ -328,7 +328,7 @@ func telegram_api_loop(pipe_out io.WriteCloser) {
                         for _, line := range strings.Split(update.Message.Text, "\n") {
                             fmt.Fprintf(
                                 pipe_out,
-                                "/say [@%s] says: %s\n",
+                                "/say §6@%s§f: %s\n",
                                 update.Message.From.Username,
                                 line,
                             )
@@ -339,7 +339,7 @@ func telegram_api_loop(pipe_out io.WriteCloser) {
                     for _, line := range strings.Split(update.EditedMessage.Text, "\n") {
                         fmt.Fprintf(
                             pipe_out,
-                            "/say [@%s] corrects: %s\n",
+                            "/say §6@%s§8 corrects§f: %s\n",
                             update.EditedMessage.From.Username,
                             line,
                         )
