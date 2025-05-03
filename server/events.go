@@ -9,6 +9,11 @@ type OutputEventMessage struct {
     Message  string
 } // <-- struct OutputEventMessage
 
+type OutputEventPlayerAchievement struct {
+    Username    string
+    Achievement string
+} // <-- struct OutputEventPlayerAchievement
+
 type OutputEventPlayerJoined struct {
     Username string
 } // <-- struct OutputEventPlayerJoined

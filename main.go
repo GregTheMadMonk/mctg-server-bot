@@ -87,6 +87,14 @@ func main() {
                 thebot.In() <- bot.InputEventSendMessage{
                     Message: fmt.Sprintf("%s left the game", event.Username),
                 }
+            case server.OutputEventPlayerAchievement:
+                thebot.In() <- bot.InputEventSendMessage{
+                    Message: fmt.Sprintf(
+                        "%s has achieved: %s",
+                        event.Username,
+                        event.Achievement,
+                    ),
+                }
             case server.OutputEventServerLoaded:
                 thebot.In() <- bot.InputEventSendMessage{
                     Message: "Server successfully started",

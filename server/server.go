@@ -148,6 +148,9 @@ func (self *Handle) handle_stdout() {
     done_r := regexp.MustCompile(
         `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/DedicatedServer\]: Done \([0-9]\.[0-9]+s\)! For help, type "help"\n$`,
     )
+    achievement_r := regexp.MustCompile(
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_]+) has made the advancement \[(.*)\]\n$`,
+    )
 
     for {
         if self.cmd == nil {
@@ -171,6 +174,11 @@ func (self *Handle) handle_stdout() {
                 self.pop_player(sm[1])
                 self.out <- OutputEventPlayerLeft{
                     Username: sm[1],
+                }
+            } else if sm := achievement_r.FindStringSubmatch(str); sm != nil {
+                self.out <- OutputEventPlayerAchievement{
+                    Username:    sm[1],
+                    Achievement: sm[2],
                 }
             } else if sm := done_r.FindStringSubmatch(str); sm != nil {
                 self.out <- OutputEventServerLoaded{}
