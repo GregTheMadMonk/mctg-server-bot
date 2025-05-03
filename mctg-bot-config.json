@@ -1,0 +1,11 @@
+{
+    "bot": {
+        "api_token":      "YOUR_TELEGRAM_API_TOKEN",
+        "chat_id":        0,
+        "admin_username": "optional"
+    },
+    "server": {
+        "cmdline":   [ "bash", "run.sh", "nogui" ],
+        "log_lines": 15
+    }
+}
