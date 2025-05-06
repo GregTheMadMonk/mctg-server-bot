@@ -137,19 +137,19 @@ func (self *Handle) handle_stdout() {
 
     // I'm sorry for what's about to follow, my precious 80-column line limit :(
     message_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]:( \[Not Secure\])* \<([A-Za-z0-9_]+)\> (.*)\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]:( \[Not Secure\])* \<([A-Za-z0-9_\.]+)\> (.*)\n$`,
     )
     joined_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_]+) joined the game\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) joined the game\n$`,
     )
     left_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_]+) left the game\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) left the game\n$`,
     )
     done_r := regexp.MustCompile(
         `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/DedicatedServer\]: Done \([0-9]\.[0-9]+s\)! For help, type "help"\n$`,
     )
     achievement_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_]+) has made the advancement \[(.*)\]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) has made the advancement \[(.*)\]\n$`,
     )
 
     for {
