@@ -5,9 +5,15 @@ type OutputEventLog struct {
 } // <-- struct OutputEventLog
 
 type OutputEventMessage struct {
+    Tellraw  bool // Redirect this message to the server too
     Username string
     Message  string
 } // <-- struct OutputEventMessage
+
+type OutputEventPlayerDeath struct {
+    Username string
+    Message  string
+} // <-- struct OutputEventPlayerDeath
 
 type OutputEventPlayerAchievement struct {
     Username    string
@@ -41,6 +47,7 @@ type OutputEventExit struct {
 type input_event_terminate struct {}
 
 type InputEventChat struct {
+    Telegram bool
     Username string
     Message  string
 } // <-- struct InputEventChat

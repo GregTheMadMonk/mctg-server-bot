@@ -50,3 +50,11 @@ are also available to them:
 
 In every other scenareo, the message is interpreted as a simple message and
 is sent to the server as if the user was just talking with a `/say` command.
+
+## Mod
+
+The `mod/` subdirectory contains an accompanying server mod.
+It enhances chat messages (makes both in-game and from-telegram chat messages
+uniformely colored) and allows the bot to send player death messages to the
+channel (ofc it was technically possible by just observing logs - but there
+is no way I'd be caught hardcoding all possible death messages into a regex)

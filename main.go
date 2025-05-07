@@ -115,6 +115,20 @@ func main() {
                          "%s: %s", event.Username, event.Message,
                      ),
                 }
+
+                if event.Tellraw {
+                    // Server has the mod installed, this message should be
+                    // re-relayed to the server too
+                    srv.In() <- server.InputEventChat{
+                        Telegram: false,
+                        Username: event.Username,
+                        Message:  event.Message,
+                    }
+                }
+            case server.OutputEventPlayerDeath:
+                thebot.In() <- bot.InputEventSendMessage{
+                    Message: fmt.Sprintf("%s\nYikes...\n", event.Message),
+                }
             default:
                 log.Println("Unknown event sent by server:", srv_out)
             }
@@ -122,6 +136,7 @@ func main() {
             switch event := bot_out.(type) {
             case bot.OutputEventMessage:
                 srv.In() <- server.InputEventChat{
+                    Telegram: true,
                     Username: event.Username,
                     Message:  event.Message,
                 }

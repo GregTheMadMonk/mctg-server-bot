@@ -4,6 +4,7 @@ package server
 
 import (
     "bufio"
+    "encoding/json"
     "fmt"
     "io"
     "log"
@@ -19,6 +20,12 @@ type Config struct {
     // Log lines to store in RAM
     LogLines uint     `json:"log_lines"`
 } // <-- struct Config
+
+// tellraw command
+type tellraw_cmd struct {
+    Text  string `json:"text"`
+    Color string `json:"color"`
+}
 
 // Handle for a single Minecraft server instance
 type Handle struct {
@@ -78,6 +85,34 @@ func (self *Handle) In() chan<- any {
 
 // Handle writing to the server's stdin
 func (self *Handle) handle_stdin() {
+    say := func(cmd []tellraw_cmd) {
+        if str, err := json.Marshal(cmd); err == nil {
+            fmt.Fprintf(*self.stdin, "/tellraw @a %s\n", str)
+        } else {
+            self.out <- OutputEventError{ &Error{ ERR_TRAWJS } }
+        }
+    } // <-- say(cmd)
+
+    make_tellraw := func(usr string, t string, tg bool, e bool) []tellraw_cmd {
+        ret := []tellraw_cmd{ { Text: "@", Color: "gold" } }
+
+        if tg {
+            ret[0].Color = "blue"
+        }
+
+        ret = append(ret, tellraw_cmd{ Text: usr, Color: "yellow" })
+        if e {
+            ret = append(
+                ret,
+                tellraw_cmd{ Text: " corrects", Color: "dark_gray" },
+            )
+        }
+        ret = append(ret, tellraw_cmd{ Text: ": ", Color: "white" })
+        ret = append(ret, tellraw_cmd{ Text: t, Color: "white" })
+
+        return ret
+    } // <-- make_tellraw(user, text, tg)
+
     for {
         ie, open := <-self.in
         if !open {
@@ -96,21 +131,11 @@ func (self *Handle) handle_stdin() {
         switch event := ie.(type) {
         case InputEventChat:
             for _, l := range strings.Split(event.Message, "\n") {
-                fmt.Fprintf(
-                    *self.stdin,
-                    "/say §6@%s§f: %s\n",
-                    event.Username,
-                    l,
-                )
+                say(make_tellraw(event.Username, l, event.Telegram, false))
             }
         case InputEventEditChat:
             for _, l := range strings.Split(event.Message, "\n") {
-                fmt.Fprintf(
-                    *self.stdin,
-                    "/say §6@%s§8 corrects§f: %s\n",
-                    event.Username,
-                    l,
-                )
+                say(make_tellraw(event.Username, l, true, true))
             }
         case InputEventListPlayers:
             self.out <- OutputEventListPlayers{
@@ -139,6 +164,12 @@ func (self *Handle) handle_stdout() {
     message_r := regexp.MustCompile(
         `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]:( \[Not Secure\])* \<([A-Za-z0-9_\.]+)\> (.*)\n$`,
     )
+    raw_message_r := regexp.MustCompile(
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: CHAT([A-Za-z0-9_\.]+)(.*)\n$`,
+    )
+    death_r := regexp.MustCompile(
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: DEATH([A-Za-z0-9_\.]+)(.*)\n$`,
+    )
     joined_r := regexp.MustCompile(
         `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) joined the game\n$`,
     )
@@ -162,8 +193,23 @@ func (self *Handle) handle_stdout() {
 
             if sm := message_r.FindStringSubmatch(str); sm != nil {
                 self.out <- OutputEventMessage{
+                    Tellraw:  false,
                     Username: sm[2],
                     Message:  sm[3],
+                }
+            } else if sm := raw_message_r.FindStringSubmatch(str); sm != nil {
+                self.out <- OutputEventLog{
+                    fmt.Sprintf("%s: %s\n", sm[1], sm[2]),
+                }
+                self.out <- OutputEventMessage{
+                    Tellraw:  true,
+                    Username: sm[1],
+                    Message:  sm[2],
+                }
+            } else if sm := death_r.FindStringSubmatch(str); sm != nil {
+                self.out <- OutputEventPlayerDeath{
+                    Username: sm[1],
+                    Message:  sm[2],
                 }
             } else if sm := joined_r.FindStringSubmatch(str); sm != nil {
                 self.push_player(sm[1])
