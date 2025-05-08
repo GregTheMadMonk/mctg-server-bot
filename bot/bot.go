@@ -5,6 +5,7 @@ package bot
 import (
     "fmt"
     "log"
+    "strings"
     "sync"
 
     "github.com/gregthemadmonk/mctg-server-bot/tg_api"
@@ -154,6 +155,20 @@ func (self *bot) handle_updates() {
         case "/kill-server":
             if admin {
                 return OutputEventKillServer{}
+            }
+        }
+
+        if strings.HasPrefix(message.Text, "/iamthe") {
+            argv := strings.Split(message.Text, " ")
+            if len(argv) != 2 {
+                return OutputEventUserError{
+                    Message: "Usage: /iamthe <minecraft_nickname>",
+                }
+            }
+
+            return OutputEventBindUser{
+                TelegramName:  message.From.Username,
+                MinecraftName: argv[1],
             }
         }
 

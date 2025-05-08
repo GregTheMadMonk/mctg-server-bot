@@ -14,9 +14,18 @@ type OutputEventCommand struct {
     Command string
 } // <-- struct OutputEventCommand
 
+type OutputEventBindUser struct {
+    TelegramName  string
+    MinecraftName string
+} // <-- struct OutputEventBindUser
+
 type OutputEventListPlayers struct {}
 
 type OutputEventKillServer struct {}
+
+type OutputEventUserError struct {
+    Message string
+} // <-- struct OutputEventUserError
 
 type OutputEventRequestError struct {
     Error error

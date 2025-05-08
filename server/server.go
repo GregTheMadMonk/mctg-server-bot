@@ -13,6 +13,8 @@ import (
     "strings"
 )
 
+const RENAME_TEAM_PFX = "__internal_rename_"
+
 // Server config
 type Config struct {
     // Command-line to run the Minecraft server
@@ -39,6 +41,9 @@ type Handle struct {
     out            chan any
     // Channel with the server's input
     in             chan any
+
+    // Teams on the server
+    teams          TeamMapping
 
     // Child process stdout
     stdout         *io.ReadCloser
@@ -113,6 +118,14 @@ func (self *Handle) handle_stdin() {
         return ret
     } // <-- make_tellraw(user, text, tg)
 
+    username := func(usr string) string {
+        team := fmt.Sprintf("%s%s", RENAME_TEAM_PFX, usr)
+        for _, display := range self.teams.TeamPlayers(team) {
+            return display
+        }
+        return usr
+    } // <-- username(usr)
+
     for {
         ie, open := <-self.in
         if !open {
@@ -129,14 +142,55 @@ func (self *Handle) handle_stdin() {
         }
 
         switch event := ie.(type) {
+        case input_event_fetch_teams:
+            fmt.Fprintf(*self.stdin, "/team list\n")
+        case input_event_req_team:
+            fmt.Fprintf(*self.stdin, "/team list %s\n", event.Team)
+        case input_event_update_team:
+            self.teams.Data = append(
+                self.teams.Data, Team{
+                    Name:      event.Team,
+                    Usernames: event.Usernames,
+                },
+            )
+            log.Println(self.teams)
         case InputEventChat:
             for _, l := range strings.Split(event.Message, "\n") {
-                say(make_tellraw(event.Username, l, event.Telegram, false))
+                say(
+                    make_tellraw(
+                        username(event.Username), l, event.Telegram, false,
+                    ),
+                )
             }
         case InputEventEditChat:
             for _, l := range strings.Split(event.Message, "\n") {
-                say(make_tellraw(event.Username, l, true, true))
+                say(make_tellraw(username(event.Username), l, true, true))
             }
+        case InputEventBindRename:
+            team_name := fmt.Sprintf("%s%s", RENAME_TEAM_PFX, event.Username)
+            old_teams := self.teams.PlayerTeams(event.DisplayName)
+            for _, team := range old_teams {
+                if !strings.HasPrefix(team, RENAME_TEAM_PFX) {
+                    continue
+                }
+
+                if team == team_name {
+                    continue
+                }
+
+                self.out <- OutputEventError{ &Error{ ERR_USER } }
+                break
+            }
+
+            fmt.Fprintf(*self.stdin, "/team remove %s\n", team_name)
+            fmt.Fprintf(*self.stdin, "/team add %s\n", team_name,)
+            fmt.Fprintf(
+                *self.stdin,
+                "/team join %s %s\n",
+                team_name,
+                event.DisplayName,
+            )
+            fmt.Fprintf(*self.stdin, "/team list\n")
         case InputEventListPlayers:
             self.out <- OutputEventListPlayers{
                 PlayersOnline: self.players_online,
@@ -169,6 +223,12 @@ func (self *Handle) handle_stdout() {
     )
     death_r := regexp.MustCompile(
         `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: DEATH([A-Za-z0-9_\.]+)(.*)\n$`,
+    )
+    teams_r := regexp.MustCompile(
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: There are ([0-9]+) team\(s\): (.+)\n$`,
+    )
+    team_r := regexp.MustCompile(
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: Team (.+) has ([0-9]+) member\(s\): (.+)\n$`,
     )
     joined_r := regexp.MustCompile(
         `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) joined the game\n$`,
@@ -210,6 +270,16 @@ func (self *Handle) handle_stdout() {
                 self.out <- OutputEventPlayerDeath{
                     Username: sm[1],
                     Message:  sm[2],
+                }
+            } else if sm := teams_r.FindStringSubmatch(str); sm != nil {
+                self.teams = TeamMapping{}
+                for _, team := range strings.Split(sm[2], ", ") {
+                    self.in <- input_event_req_team{ Team: team[1:len(team)-1] }
+                }
+            } else if sm := team_r.FindStringSubmatch(str); sm != nil {
+                self.in <- input_event_update_team{
+                    Team:      sm[1][1:len(sm[1])-1],
+                    Usernames: strings.Split(sm[3], ", "),
                 }
             } else if sm := joined_r.FindStringSubmatch(str); sm != nil {
                 self.push_player(sm[1])
@@ -297,6 +367,10 @@ func (self *Handle) Start() error {
     // Handle the process IO
     self.stdin  = &pipe_in
     self.stdout = &pipe_out
+
+    // Update the teams
+    fmt.Fprintf(*self.stdin, "/team list\n")
+
     go self.handle_stdin()
     go self.handle_stdout()
 
@@ -305,6 +379,15 @@ func (self *Handle) Start() error {
 
     return nil
 } // <-- Handle::Start()
+
+func (self *Handle) ReverseRename(username string) string {
+    for _, team := range self.teams.PlayerTeams(username) {
+        if strings.HasPrefix(team, RENAME_TEAM_PFX) {
+            return team[len(RENAME_TEAM_PFX):]
+        }
+    }
+    return username
+} // <-- Handle::ReverseRename(username)
 
 // Create server handle from the config
 func MakeHandle(server_cfg Config) Handle {

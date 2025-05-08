@@ -4,6 +4,7 @@ const (
     ERR_RUNNING = iota
     ERR_ETYPE   = iota
     ERR_TRAWJS  = iota
+    ERR_USER    = iota
 )
 
 type Error struct {
@@ -18,6 +19,8 @@ func (self *Error) Error() string {
         return "Unknown event type"
     case ERR_TRAWJS:
         return "Cannot serialize /tellraw message argument"
+    case ERR_USER:
+        return "User error"
     default:
         return "Unknown server error"
     }

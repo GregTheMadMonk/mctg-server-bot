@@ -37,6 +37,14 @@ func main() {
         log.Fatalln("Could not initialize server:", srv_err)
     }
 
+    tg_msg_name := func (usr string) string {
+        tg_name := srv.ReverseRename(usr)
+        if tg_name == usr {
+            return usr
+        }
+        return fmt.Sprintf("%s (%s)", usr, tg_name)
+    } // <-- tg_msg_name(usr)
+
     // Main loop
     // The .In() channels could've been replaced with calling methods but
     // the code was easier to design around separate goroutines handling
@@ -81,17 +89,23 @@ func main() {
                 }
             case server.OutputEventPlayerJoined:
                 thebot.In() <- bot.InputEventSendMessage{
-                    Message: fmt.Sprintf("%s joined the game", event.Username),
+                    Message: fmt.Sprintf(
+                        "%s joined the game",
+                        tg_msg_name(event.Username),
+                    ),
                 }
             case server.OutputEventPlayerLeft:
                 thebot.In() <- bot.InputEventSendMessage{
-                    Message: fmt.Sprintf("%s left the game", event.Username),
+                    Message: fmt.Sprintf(
+                        "%s left the game",
+                        tg_msg_name(event.Username),
+                    ),
                 }
             case server.OutputEventPlayerAchievement:
                 thebot.In() <- bot.InputEventSendMessage{
                     Message: fmt.Sprintf(
                         "%s has achieved: %s",
-                        event.Username,
+                        tg_msg_name(event.Username),
                         event.Achievement,
                     ),
                 }
@@ -100,19 +114,19 @@ func main() {
                     Message: "Server successfully started",
                 }
             case server.OutputEventListPlayers:
-                thebot.In() <- bot.InputEventSendMessage{
-                    Message: fmt.Sprintf(
-                        "%d players:\n%v\n",
-                        len(event.PlayersOnline),
-                        event.PlayersOnline,
-                    ),
+                msg := fmt.Sprintf("%d players:\n", len(event.PlayersOnline))
+                for _, player := range event.PlayersOnline {
+                    msg += fmt.Sprintf("* %s\n", tg_msg_name(player))
                 }
+                thebot.In() <- bot.InputEventSendMessage{ Message: msg }
             case server.OutputEventLog:
                 log.Println(event.Message)
             case server.OutputEventMessage:
                 thebot.In() <- bot.InputEventSendMessage{
                      Message: fmt.Sprintf(
-                         "%s: %s", event.Username, event.Message,
+                         "%s: %s",
+                         tg_msg_name(event.Username),
+                         event.Message,
                      ),
                 }
 
@@ -127,7 +141,18 @@ func main() {
                 }
             case server.OutputEventPlayerDeath:
                 thebot.In() <- bot.InputEventSendMessage{
-                    Message: fmt.Sprintf("%s\nYikes...\n", event.Message),
+                    Message: fmt.Sprintf(
+                        "%s: %s\nYikes...\n",
+                        tg_msg_name(event.Username),
+                        event.Message,
+                    ),
+                }
+            case server.OutputEventError:
+                log.Println("Server error:", event.Error)
+                if event.Error.Error() == "User error" {
+                    thebot.In() <- bot.InputEventSendMessage{
+                        Message: "User error",
+                    }
                 }
             default:
                 log.Println("Unknown event sent by server:", srv_out)
@@ -153,6 +178,15 @@ func main() {
                 srv.In() <- server.InputEventListPlayers{}
             case bot.OutputEventKillServer:
                 srv.In() <- server.InputEventKillServer{}
+            case bot.OutputEventBindUser:
+                srv.In() <- server.InputEventBindRename{
+                    Username:    event.TelegramName,
+                    DisplayName: event.MinecraftName,
+                }
+            case bot.OutputEventUserError:
+                thebot.In() <- bot.InputEventSendMessage{
+                    Message: event.Message,
+                }
             case bot.OutputEventAPIError:
                 log.Println("Telegram API error:", event.Error)
             default:

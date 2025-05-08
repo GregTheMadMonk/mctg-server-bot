@@ -40,6 +40,7 @@ performed:
 |Command|Action|
 |---|---|
 |`/players`|List players online on the server|
+|`/iamthe <username>`|Declares that the user plays under `<username>` login in Minecraft. The messages from this user will appear in Minecraft under `<username>` and messages from Minecraft will contain the telegram username for this person. _Note: if changing Telegram handle, remap the old handle to a different nickname first or contact server operator to remove the mapping altogether_|
 
 If the user is an admin (as specified in the config), the following commands
 are also available to them:
