@@ -216,31 +216,31 @@ func (self *Handle) handle_stdout() {
 
     // I'm sorry for what's about to follow, my precious 80-column line limit :(
     message_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]:( \[Not Secure\])* \<([A-Za-z0-9_\.]+)\> (.*)[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]:( \[Not Secure\])* \<([A-Za-z0-9_\.]+)\> (.*)\r*\n$`,
     )
     raw_message_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: CHAT([A-Za-z0-9_\.]+)(.*)[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: CHAT([A-Za-z0-9_\.]+)(.*)\r*\n$`,
     )
     death_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: DEATH([A-Za-z0-9_\.]+)(.*)[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[co.gr.mc.MCTGMod\/\]: DEATH([A-Za-z0-9_\.]+)(.*)\r*\n$`,
     )
     teams_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: There are ([0-9]+) team\(s\): (.+)[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: There are ([0-9]+) team\(s\): (.+)\r*\n$`,
     )
     team_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: Team (.+) has ([0-9]+) member\(s\): (.+)[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: Team (.+) has ([0-9]+) member\(s\): (.+)\r*\n$`,
     )
     joined_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) joined the game[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) joined the game\r*\n$`,
     )
     left_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) left the game[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) left the game\r*\n$`,
     )
     done_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/DedicatedServer\]: Done \([0-9]\.[0-9]+s\)! For help, type "help"[\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/DedicatedServer\]: Done \([0-9]\.[0-9]+s\)! For help, type "help"\r*\n$`,
     )
     achievement_r := regexp.MustCompile(
-        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) has made the advancement \[(.*)\][\r]\n$`,
+        `^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\] \[Server thread\/INFO\] \[minecraft\/MinecraftServer\]: ([A-Za-z0-9_\.]+) has made the advancement \[(.*)\]\r*\n$`,
     )
 
     for {
