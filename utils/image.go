@@ -16,12 +16,12 @@ import (
 )
 
 const MAX_WIDTH = 30
-const MAX_HEIGHT = 100
+const MAX_HEIGHT = 30
 
 // a simple ramp from darkest (“@”) to lightest (“ ”)
-var asciiRamp = []rune("@%#*+=-:. ")
+const ASCII_BLOCK_SYMBOL = '⣿'
 
-const BLANK = ' '
+const BLANK = '⠀'
 
 func ConvertImageToColoredText(content []byte, extension string) [][]server.ColoredSymbol {
 	contentBuffer := bytes.NewBuffer(content)
@@ -69,20 +69,14 @@ func ConvertImageToColoredText(content []byte, extension string) [][]server.Colo
 			rgba := resized.RGBAAt(x, y)
 
 			// handle zero alpha
-			if rgba.A <= 10 {
+			if rgba.A == 0 {
 				row[x] = server.ColoredSymbol{
 					Symbol: BLANK,
 					Color:  hexColor(color.RGBA{R: rgba.R, G: rgba.G, B: rgba.B}),
 				}
 			} else {
-				// compute luminance (simple avg)
-				lum := uint16(rgba.R) + uint16(rgba.G) + uint16(rgba.B)
-				lum /= 3
-				// map 0–255 to 0–len(asciiRamp)-1
-				idx := int(lum) * (len(asciiRamp) - 1) / 255
-				sym := asciiRamp[len(asciiRamp)-1-idx]
 				row[x] = server.ColoredSymbol{
-					Symbol: sym,
+					Symbol: ASCII_BLOCK_SYMBOL,
 					Color:  hexColor(color.RGBA{R: rgba.R, G: rgba.G, B: rgba.B}),
 				}
 			}
