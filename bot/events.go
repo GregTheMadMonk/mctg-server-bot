@@ -1,43 +1,50 @@
 package bot
 
 type OutputEventMessage struct {
-    Username string
-    Message  string
+	Username string
+	Message  string
 } // <-- struct OutputEventMessage
 
 type OutputEventEditMessage struct {
-    Username string
-    Message  string
+	Username string
+	Message  string
 } // <-- sturct OutputEventEditMessage
 
+type OutputEventImage struct {
+	Username  string
+	FilePath  string
+	Extension string
+	Content   []byte
+} // <-- struct OutputEventImage
+
 type OutputEventCommand struct {
-    Command string
+	Command string
 } // <-- struct OutputEventCommand
 
 type OutputEventBindUser struct {
-    TelegramName  string
-    MinecraftName string
+	TelegramName  string
+	MinecraftName string
 } // <-- struct OutputEventBindUser
 
-type OutputEventListPlayers struct {}
+type OutputEventListPlayers struct{}
 
-type OutputEventKillServer struct {}
+type OutputEventKillServer struct{}
 
 type OutputEventUserError struct {
-    Message string
+	Message string
 } // <-- struct OutputEventUserError
 
 type OutputEventRequestError struct {
-    Error error
+	Error error
 } // <-- struct OutputEventRequestError
 
 type OutputEventAPIError struct {
-    Error error
+	Error error
 } // <-- struct OutputEventAPIError
 
 // Terminate the input channel reading loop. For internal use only
-type input_event_terminate struct {}
+type input_event_terminate struct{}
 
 type InputEventSendMessage struct {
-    Message string
+	Message string
 } // <-- struct InputEventSendMessage
