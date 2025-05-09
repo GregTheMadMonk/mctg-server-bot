@@ -143,6 +143,10 @@ func (self *bot) handle_updates() {
     params := Params{ 0 }
 
     updateMessage := func(message *tg_api.Message) any {
+        if message.Chat.Id != self.config.ChatId {
+            return nil
+        }
+
         if len(message.Text) == 0 {
             return nil
         }
@@ -206,9 +210,11 @@ func (self *bot) handle_updates() {
                 }
 
                 if update.EditedMessage != nil && len(update.EditedMessage.Text) != 0 {
-                    self.out <- OutputEventEditMessage{
-                        Username: update.EditedMessage.From.Username,
-                        Message:  update.EditedMessage.Text,
+                    if update.EditedMessage.Chat.Id == self.config.ChatId {
+                        self.out <- OutputEventEditMessage{
+                            Username: update.EditedMessage.From.Username,
+                            Message:  update.EditedMessage.Text,
+                        }
                     }
                 }
             }

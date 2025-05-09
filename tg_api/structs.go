@@ -26,10 +26,15 @@ type User struct {
     Username string `json:"username"`
 } // <-- struct User
 
+type Chat struct {
+    Id int `json:"id"`
+} // <-- struct Chat
+
 type Message struct {
     MessageId int    `json:"message_id"`
     From      User   `json:"from"`
     Text      string `json:"text"`
+    Chat      Chat   `json:"chat"`
 } // <-- struct Message
 
 type Update struct {

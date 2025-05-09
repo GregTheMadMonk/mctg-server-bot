@@ -52,6 +52,12 @@ are also available to them:
 In every other scenareo, the message is interpreted as a simple message and
 is sent to the server as if the user was just talking with a `/say` command.
 
+## Windows
+
+For the bot to work properly on Windows, remove `pause` command from the end
+of the server's batch file or you'll have to send dummy messages to the server
+every time to bypass it.
+
 ## Mod
 
 The `mod/` subdirectory contains an accompanying server mod.
