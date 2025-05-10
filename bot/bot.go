@@ -3,312 +3,312 @@
 package bot
 
 import (
-	"fmt"
-	"log"
-	"regexp"
-	"sort"
-	"strings"
-	"sync"
+    "fmt"
+    "log"
+    "regexp"
+    "sort"
+    "strings"
+    "sync"
 
-	"github.com/gregthemadmonk/mctg-server-bot/tg_api"
+    "github.com/gregthemadmonk/mctg-server-bot/tg_api"
 )
 
 // Bot config
 type Config struct {
-	// Telegram bot API token
-	ApiToken string `json:"api_token"`
-	// Telegram channel ID for the bot to live in
-	ChatId int `json:"chat_id"`
-	// Username of a Telegram user who can issue slash-commands directly to
-	// the server
-	AdminUsername string `json:"admin_username,omitempty"`
+    // Telegram bot API token
+    ApiToken string `json:"api_token"`
+    // Telegram channel ID for the bot to live in
+    ChatId int `json:"chat_id"`
+    // Username of a Telegram user who can issue slash-commands directly to
+    // the server
+    AdminUsername string `json:"admin_username,omitempty"`
 } // <-- struct Config
 
 const (
-	BS_RUNNING  = iota
-	BS_STOPPING = iota
-	BS_STOPPED  = iota
+    BS_RUNNING  = iota
+    BS_STOPPING = iota
+    BS_STOPPED  = iota
 )
 
 // The bot state
 type bot struct {
-	config  Config
-	running uint
-	wg      sync.WaitGroup
-	out     chan any
-	in      chan any
+    config  Config
+    running uint
+    wg      sync.WaitGroup
+    out     chan any
+    in      chan any
 } // <-- struct bot
 
 // Create bot from the config
 func MakeBot(
-	bot_cfg Config,
+    bot_cfg Config,
 ) (*bot, error) {
-	ret := bot{
-		config:  bot_cfg,
-		running: BS_STOPPED,
-		out:     make(chan any),
-		in:      make(chan any),
-	}
+    ret := bot{
+        config:  bot_cfg,
+        running: BS_STOPPED,
+        out:     make(chan any),
+        in:      make(chan any),
+    }
 
-	log.Println("Checking Telegram bot API accessibility...")
-	url := ret.Uri("getMe")
-	if res, err := tg_api.ExchangeInto[tg_api.GetMe](url); err == nil {
-		if !res.Ok {
-			return nil, res
-		}
-		log.Printf(
-			"Running as @%s (%s)\n",
-			res.Result.Username,
-			res.Result.FirstName,
-		)
-	} else {
-		return nil, err
-	}
+    log.Println("Checking Telegram bot API accessibility...")
+    url := ret.Uri("getMe")
+    if res, err := tg_api.ExchangeInto[tg_api.GetMe](url); err == nil {
+        if !res.Ok {
+            return nil, res
+        }
+        log.Printf(
+            "Running as @%s (%s)\n",
+            res.Result.Username,
+            res.Result.FirstName,
+        )
+    } else {
+        return nil, err
+    }
 
-	return &ret, nil
+    return &ret, nil
 } // <-- MakeBot(cfg)
 
 // Get bot's output event channel
 func (self *bot) Out() <-chan any {
-	return self.out
+    return self.out
 } // <-- bot::Out()
 
 // Get bot's input event channel
 func (self *bot) In() chan<- any {
-	return self.in
+    return self.in
 } // <-- bot::In()
 
 func (self *bot) Uri(endpoint string) string {
-	return fmt.Sprintf(
-		"%s%s/%s", tg_api.API_BASE, self.config.ApiToken, endpoint,
-	)
+    return fmt.Sprintf(
+        "%s%s/%s", tg_api.API_BASE, self.config.ApiToken, endpoint,
+    )
 } // <-- bot::Uri(endpoint)
 
 func (self *bot) FileUri(filePath string) string {
-	return fmt.Sprintf(
-		"%s%s/%s", tg_api.API_FILE_BASE, self.config.ApiToken, filePath,
-	)
+    return fmt.Sprintf(
+        "%s%s/%s", tg_api.API_FILE_BASE, self.config.ApiToken, filePath,
+    )
 } // <-- bot::FileUri(filePath)
 
 // Send message as a bot. Set `use_md=true` if message contains Markdown
 func (self *bot) send_message(
-	message string, use_md bool,
+    message string, use_md bool,
 ) (*tg_api.Message, error) {
-	p := tg_api.SendMessage{
-		ChatId:    self.config.ChatId,
-		Text:      message,
-		ParseMode: "",
-	}
+    p := tg_api.SendMessage{
+        ChatId:    self.config.ChatId,
+        Text:      message,
+        ParseMode: "",
+    }
 
-	if use_md {
-		p.ParseMode = tg_api.PM_MARKDOWN
-	}
+    if use_md {
+        p.ParseMode = tg_api.PM_MARKDOWN
+    }
 
-	exch_f := tg_api.ExchangeIntoWith[tg_api.Message, tg_api.SendMessage]
-	if res, err := exch_f(self.Uri("sendMessage"), p); err == nil {
-		if !res.Ok {
-			return nil, res
-		}
-		return &res.Result, nil
-	} else {
-		return nil, err
-	}
+    exch_f := tg_api.ExchangeIntoWith[tg_api.Message, tg_api.SendMessage]
+    if res, err := exch_f(self.Uri("sendMessage"), p); err == nil {
+        if !res.Ok {
+            return nil, res
+        }
+        return &res.Result, nil
+    } else {
+        return nil, err
+    }
 } // <-- bot::send_message(message, use_md)
 
 // Make a bot edit its message. Set `use_md=true` if message contains Markdown
 func (self *bot) edit_message(
-	message_id int, message string, use_md bool,
+    message_id int, message string, use_md bool,
 ) (*tg_api.Message, error) {
-	p := tg_api.EditMessageText{
-		ChatId:    self.config.ChatId,
-		MessageId: message_id,
-		Text:      message,
-		ParseMode: "",
-	}
+    p := tg_api.EditMessageText{
+        ChatId:    self.config.ChatId,
+        MessageId: message_id,
+        Text:      message,
+        ParseMode: "",
+    }
 
-	if use_md {
-		p.ParseMode = tg_api.PM_MARKDOWN
-	}
+    if use_md {
+        p.ParseMode = tg_api.PM_MARKDOWN
+    }
 
-	exch_f := tg_api.ExchangeIntoWith[tg_api.Message, tg_api.EditMessageText]
-	if res, err := exch_f(self.Uri("editMessageText"), p); err == nil {
-		if !res.Ok {
-			return nil, res
-		}
-		return &res.Result, nil
-	} else {
-		return nil, err
-	}
+    exch_f := tg_api.ExchangeIntoWith[tg_api.Message, tg_api.EditMessageText]
+    if res, err := exch_f(self.Uri("editMessageText"), p); err == nil {
+        if !res.Ok {
+            return nil, res
+        }
+        return &res.Result, nil
+    } else {
+        return nil, err
+    }
 } // <-- bot::edit_message(message_id, message, use_md)
 
 func (self *bot) IsRunning() bool { return self.running != BS_STOPPED }
 
 func (self *bot) handle_updates() {
-	type Params struct {
-		Offset int `json:"offset"`
-	} // <-- var params
+    type Params struct {
+        Offset int `json:"offset"`
+    } // <-- var params
 
-	params := Params{0}
+    params := Params{0}
 
-	updateMessage := func(message *tg_api.Message) any {
-		if message.Chat.Id != self.config.ChatId {
-			return nil
-		}
+    updateMessage := func(message *tg_api.Message) any {
+        if message.Chat.Id != self.config.ChatId {
+            return nil
+        }
 
-		// Image are handled only if text not provided
-		if len(message.Text) == 0 && message.Sticker != nil {
-			fp, e, c := self.get_file(message.Sticker.FileId)
-			return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
-		} else if len(message.Text) == 0 && len(message.Photo) > 0 {
-			// Get version of photo with higher resolution
-			sort.Slice(message.Photo, func(i, j int) bool {
-				return message.Photo[i].Width < message.Photo[j].Width
-			})
+        // Image are handled only if text not provided
+        if len(message.Text) == 0 && message.Sticker != nil {
+            fp, e, c := self.get_file(message.Sticker.FileId)
+            return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
+        } else if len(message.Text) == 0 && len(message.Photo) > 0 {
+            // Get version of photo with higher resolution
+            sort.Slice(message.Photo, func(i, j int) bool {
+                return message.Photo[i].Width < message.Photo[j].Width
+            })
 
-			fp, e, c := self.get_file(message.Photo[0].FileId)
-			return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
-		} else if len(message.Text) == 0 {
-			return nil
-		}
+            fp, e, c := self.get_file(message.Photo[0].FileId)
+            return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
+        } else if len(message.Text) == 0 {
+            return nil
+        }
 
-		admin := message.From.Username == self.config.AdminUsername
+        admin := message.From.Username == self.config.AdminUsername
 
-		switch message.Text {
-		case "/players":
-			return OutputEventListPlayers{}
-		case "/kill-server":
-			if admin {
-				return OutputEventKillServer{}
-			}
-		}
+        switch message.Text {
+        case "/players":
+            return OutputEventListPlayers{}
+        case "/kill-server":
+            if admin {
+                return OutputEventKillServer{}
+            }
+        }
 
-		if strings.HasPrefix(message.Text, "/iamthe") {
-			argv := strings.Split(message.Text, " ")
-			if len(argv) != 2 {
-				return OutputEventUserError{
-					Message: "Usage: /iamthe <minecraft_nickname>",
-				}
-			}
+        if strings.HasPrefix(message.Text, "/iamthe") {
+            argv := strings.Split(message.Text, " ")
+            if len(argv) != 2 {
+                return OutputEventUserError{
+                    Message: "Usage: /iamthe <minecraft_nickname>",
+                }
+            }
 
-			return OutputEventBindUser{
-				TelegramName:  message.From.Username,
-				MinecraftName: argv[1],
-			}
-		}
+            return OutputEventBindUser{
+                TelegramName:  message.From.Username,
+                MinecraftName: argv[1],
+            }
+        }
 
-		if admin && message.Text[0] == '/' {
-			return OutputEventCommand{message.Text}
-		}
+        if admin && message.Text[0] == '/' {
+            return OutputEventCommand{message.Text}
+        }
 
-		return OutputEventMessage{
-			Username: message.From.Username,
-			Message:  message.Text,
-		}
-	} // <-- updateMessage(message)
+        return OutputEventMessage{
+            Username: message.From.Username,
+            Message:  message.Text,
+        }
+    } // <-- updateMessage(message)
 
-	exch_f := tg_api.ExchangeIntoWith[[]tg_api.Update, Params]
-	for {
-		if self.running != BS_RUNNING {
-			break
-		}
+    exch_f := tg_api.ExchangeIntoWith[[]tg_api.Update, Params]
+    for {
+        if self.running != BS_RUNNING {
+            break
+        }
 
-		if res, err := exch_f(self.Uri("getUpdates"), params); err == nil {
-			if !res.Ok {
-				self.out <- OutputEventAPIError{res}
-				continue
-			}
+        if res, err := exch_f(self.Uri("getUpdates"), params); err == nil {
+            if !res.Ok {
+                self.out <- OutputEventAPIError{res}
+                continue
+            }
 
-			for _, update := range res.Result {
-				if params.Offset < update.UpdateId+1 {
-					params.Offset = update.UpdateId + 1
-				}
+            for _, update := range res.Result {
+                if params.Offset < update.UpdateId+1 {
+                    params.Offset = update.UpdateId + 1
+                }
 
-				if update.Message != nil {
-					if e := updateMessage(update.Message); e != nil {
-						self.out <- e
-					}
-				}
+                if update.Message != nil {
+                    if e := updateMessage(update.Message); e != nil {
+                        self.out <- e
+                    }
+                }
 
-				if update.EditedMessage != nil && len(update.EditedMessage.Text) != 0 {
-					if update.EditedMessage.Chat.Id == self.config.ChatId {
-						self.out <- OutputEventEditMessage{
-							Username: update.EditedMessage.From.Username,
-							Message:  update.EditedMessage.Text,
-						}
-					}
-				}
-			}
-		} else {
-			self.out <- OutputEventRequestError{err}
-		}
-	}
-	self.wg.Done()
-	log.Println("Exit bot.bot::handle_updates()")
+                if update.EditedMessage != nil && len(update.EditedMessage.Text) != 0 {
+                    if update.EditedMessage.Chat.Id == self.config.ChatId {
+                        self.out <- OutputEventEditMessage{
+                            Username: update.EditedMessage.From.Username,
+                            Message:  update.EditedMessage.Text,
+                        }
+                    }
+                }
+            }
+        } else {
+            self.out <- OutputEventRequestError{err}
+        }
+    }
+    self.wg.Done()
+    log.Println("Exit bot.bot::handle_updates()")
 } // <-- bot::handle_updates()
 
 func (self *bot) get_file(fileId string) (filePath, extension string, fileContent []byte) {
-	p := tg_api.GetFile{FileId: fileId}
+    p := tg_api.GetFile{FileId: fileId}
 
-	log.Println("Preparing file for downloading:", fileId)
-	f, err := tg_api.ExchangeIntoWith[tg_api.File, tg_api.GetFile](self.Uri("getFile"), p)
-	if err != nil {
-		log.Println("Failed to get file info", fileId)
-		return "", "", nil
-	}
+    log.Println("Preparing file for downloading:", fileId)
+    f, err := tg_api.ExchangeIntoWith[tg_api.File, tg_api.GetFile](self.Uri("getFile"), p)
+    if err != nil {
+        log.Println("Failed to get file info", fileId)
+        return "", "", nil
+    }
 
-	file := f.Result
+    file := f.Result
 
-	log.Println("Get file content:", file.FilePath)
-	content, err := tg_api.Exchange(self.FileUri(file.FilePath))
-	if err != nil {
-		log.Println("Failed to get file content", fileId)
-		return "", "", nil
-	}
+    log.Println("Get file content:", file.FilePath)
+    content, err := tg_api.Exchange(self.FileUri(file.FilePath))
+    if err != nil {
+        log.Println("Failed to get file content", fileId)
+        return "", "", nil
+    }
 
-	extension = regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
+    extension = regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
 
-	return file.FilePath, extension, *content
+    return file.FilePath, extension, *content
 } // <-- bot::get_file(fileId)
 
 func (self *bot) handle_inputs() {
 handler:
-	for {
-		ie, open := <-self.in
-		if !open {
-			continue
-		}
+    for {
+        ie, open := <-self.in
+        if !open {
+            continue
+        }
 
-		switch event := ie.(type) {
-		case input_event_terminate:
-			break handler
-		case InputEventSendMessage:
-			self.send_message(event.Message, false)
-		}
-	}
-	self.wg.Done()
-	log.Println("Exit bot.bot::handle_inputs()")
+        switch event := ie.(type) {
+        case input_event_terminate:
+            break handler
+        case InputEventSendMessage:
+            self.send_message(event.Message, false)
+        }
+    }
+    self.wg.Done()
+    log.Println("Exit bot.bot::handle_inputs()")
 } // <-- bot::handle_input()
 
 func (self *bot) Start() {
-	if self.running != BS_STOPPED {
-		log.Println("Trying to start the bot twice!")
-		return
-	}
+    if self.running != BS_STOPPED {
+        log.Println("Trying to start the bot twice!")
+        return
+    }
 
-	self.running = BS_RUNNING
-	self.wg.Add(2)
-	go self.handle_updates()
-	go self.handle_inputs()
+    self.running = BS_RUNNING
+    self.wg.Add(2)
+    go self.handle_updates()
+    go self.handle_inputs()
 } // <-- bot::Start()
 
 func (self *bot) Stop() {
-	if self.running != BS_RUNNING {
-		log.Println("Trying to stop the bot twice!")
-		return
-	}
+    if self.running != BS_RUNNING {
+        log.Println("Trying to stop the bot twice!")
+        return
+    }
 
-	self.running = BS_STOPPING
-	self.in <- input_event_terminate{}
-	self.wg.Wait()
-	self.running = BS_STOPPED
+    self.running = BS_STOPPING
+    self.in <- input_event_terminate{}
+    self.wg.Wait()
+    self.running = BS_STOPPED
 } // <-- bot::Stop()

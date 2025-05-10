@@ -4,82 +4,82 @@ package tg_api
 
 // Telgram API returns all results with optional error info
 type ExchangeResult[T any] struct {
-	Ok          bool   `json:"ok"`
-	ErrorCode   int    `json:"error_code"`
-	Description string `json:"description"`
-	Result      T      `json:"result"`
+    Ok          bool   `json:"ok"`
+    ErrorCode   int    `json:"error_code"`
+    Description string `json:"description"`
+    Result      T      `json:"result"`
 } // <-- struct ExchangeResult[T]
 
 type GetMe struct {
-	Id                      int    `json:"id"`
-	IsBot                   bool   `json:"is_bot"`
-	FirstName               string `json:"first_name"`
-	Username                string `json:"username"`
-	CanJoinGroups           bool   `json:"can_join_groups"`
-	CanReadAllGroupMessages bool   `json:"can_read_all_group_messages"`
-	SupportsInlineQueries   bool   `json:"supports_inline_queries"`
-	CanConnectToBusiness    bool   `json:"can_connect_to_business"`
-	HasMainWebApp           bool   `json:"has_main_web_app"`
+    Id                      int    `json:"id"`
+    IsBot                   bool   `json:"is_bot"`
+    FirstName               string `json:"first_name"`
+    Username                string `json:"username"`
+    CanJoinGroups           bool   `json:"can_join_groups"`
+    CanReadAllGroupMessages bool   `json:"can_read_all_group_messages"`
+    SupportsInlineQueries   bool   `json:"supports_inline_queries"`
+    CanConnectToBusiness    bool   `json:"can_connect_to_business"`
+    HasMainWebApp           bool   `json:"has_main_web_app"`
 } // <-- struct GetMe
 
 type User struct {
-	Username string `json:"username"`
+    Username string `json:"username"`
 } // <-- struct User
 
 type Chat struct {
-	Id int `json:"id"`
+    Id int `json:"id"`
 } // <-- struct Chat
 
 type PhotoSize struct {
-	FileId   string `json:"file_id"`
-	Width    int    `json:"width"`
-	Height   int    `json:"height"`
-	MimeType string `json:"mime_type"`
+    FileId   string `json:"file_id"`
+    Width    int    `json:"width"`
+    Height   int    `json:"height"`
+    MimeType string `json:"mime_type"`
 } // <-- struct PhotoSize
 
 type Sticker struct {
-	FileId    string     `json:"file_id"`
-	Width     int        `json:"width"`
-	Height    int        `json:"height"`
-	Thumbnail *PhotoSize `json:"thumbnail"`
+    FileId    string     `json:"file_id"`
+    Width     int        `json:"width"`
+    Height    int        `json:"height"`
+    Thumbnail *PhotoSize `json:"thumbnail"`
 } // <-- struct Sticker
 
 type File struct {
-	FileId   string `json:"file_id"`
-	FilePath string `json:"file_path"`
+    FileId   string `json:"file_id"`
+    FilePath string `json:"file_path"`
 } // <-- struct File
 
 type Message struct {
-	MessageId int         `json:"message_id"`
-	From      User        `json:"from"`
-	Text      string      `json:"text"`
-	Chat      Chat        `json:"chat"`
-	Photo     []PhotoSize `json:"photo"`
-	Sticker   *Sticker    `json:"sticker"`
+    MessageId int         `json:"message_id"`
+    From      User        `json:"from"`
+    Text      string      `json:"text"`
+    Chat      Chat        `json:"chat"`
+    Photo     []PhotoSize `json:"photo"`
+    Sticker   *Sticker    `json:"sticker"`
 } // <-- struct Message
 
 type Update struct {
-	UpdateId          int      `json:"update_id"`
-	Message           *Message `json:"message"`
-	EditedMessage     *Message `json:"edited_message"`
-	ChannelPost       *Message `json:"channel_post"`
-	EditedChannelPost *Message `json:"edited_channel_post"`
-	// TODO: Implement other fields as needed
+    UpdateId          int      `json:"update_id"`
+    Message           *Message `json:"message"`
+    EditedMessage     *Message `json:"edited_message"`
+    ChannelPost       *Message `json:"channel_post"`
+    EditedChannelPost *Message `json:"edited_channel_post"`
+    // TODO: Implement other fields as needed
 } // <-- struct Update
 
 type SendMessage struct {
-	ChatId    int    `json:"chat_id"`
-	Text      string `json:"text"`
-	ParseMode string `json:"parse_mode,omitempty"`
+    ChatId    int    `json:"chat_id"`
+    Text      string `json:"text"`
+    ParseMode string `json:"parse_mode,omitempty"`
 } // <-- struct SendMessage
 
 type EditMessageText struct {
-	ChatId    int    `json:"chat_id"`
-	MessageId int    `json:"message_id"`
-	Text      string `json:"text"`
-	ParseMode string `json:"parse_mode,omitempty"`
+    ChatId    int    `json:"chat_id"`
+    MessageId int    `json:"message_id"`
+    Text      string `json:"text"`
+    ParseMode string `json:"parse_mode,omitempty"`
 } // <-- struct EditMessageText
 
 type GetFile struct {
-	FileId string `json:"file_id"`
+    FileId string `json:"file_id"`
 }
