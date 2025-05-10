@@ -3,11 +3,11 @@ package main
 import (
     "encoding/json"
     "fmt"
-    "log"
-    "os"
-
     "github.com/gregthemadmonk/mctg-server-bot/bot"
     "github.com/gregthemadmonk/mctg-server-bot/server"
+    "github.com/gregthemadmonk/mctg-server-bot/utils"
+    "log"
+    "os"
 ) // <-- import
 
 type Config struct {
@@ -37,7 +37,7 @@ func main() {
         log.Fatalln("Could not initialize server:", srv_err)
     }
 
-    tg_msg_name := func (usr string) string {
+    tg_msg_name := func(usr string) string {
         tg_name := srv.ReverseRename(usr)
         if tg_name == usr {
             return usr
@@ -118,16 +118,16 @@ func main() {
                 for _, player := range event.PlayersOnline {
                     msg += fmt.Sprintf("* %s\n", tg_msg_name(player))
                 }
-                thebot.In() <- bot.InputEventSendMessage{ Message: msg }
+                thebot.In() <- bot.InputEventSendMessage{Message: msg}
             case server.OutputEventLog:
                 log.Println(event.Message)
             case server.OutputEventMessage:
                 thebot.In() <- bot.InputEventSendMessage{
-                     Message: fmt.Sprintf(
-                         "%s: %s",
-                         tg_msg_name(event.Username),
-                         event.Message,
-                     ),
+                    Message: fmt.Sprintf(
+                        "%s: %s",
+                        tg_msg_name(event.Username),
+                        event.Message,
+                    ),
                 }
 
                 if event.Tellraw {
@@ -174,6 +174,18 @@ func main() {
                 srv.In() <- server.InputEventCommand{
                     Command: event.Command,
                 }
+            case bot.OutputEventImage:
+                //fileName := strings.ReplaceAll(event.FilePath, "/", "")
+                //os.WriteFile(fileName, event.Content, os.ModeExclusive)
+                m := utils.ConvertImageToColoredText(event.Content, event.Extension)
+                if m != nil {
+                    srv.In() <- server.InputEventColoredChat{
+                        Telegram:       true,
+                        Username:       event.Username,
+                        ColoredMessage: m,
+                    }
+                }
+
             case bot.OutputEventListPlayers:
                 srv.In() <- server.InputEventListPlayers{}
             case bot.OutputEventKillServer:

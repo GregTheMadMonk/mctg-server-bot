@@ -18,9 +18,9 @@ const RENAME_TEAM_PFX = "__internal_rename_"
 // Server config
 type Config struct {
     // Command-line to run the Minecraft server
-    Cmdline  []string `json:"cmdline"`
+    Cmdline []string `json:"cmdline"`
     // Log lines to store in RAM
-    LogLines uint     `json:"log_lines"`
+    LogLines uint `json:"log_lines"`
 } // <-- struct Config
 
 // tellraw command
@@ -32,26 +32,26 @@ type tellraw_cmd struct {
 // Handle for a single Minecraft server instance
 type Handle struct {
     // Server handler config
-    config         Config
+    config Config
     // Process command handle
-    cmd            *exec.Cmd
+    cmd *exec.Cmd
     // A list of active players
     players_online []string
     // Channel with the server's output
-    out            chan any
+    out chan any
     // Channel with the server's input
-    in             chan any
+    in chan any
 
     // Teams on the server
-    teams          TeamMapping
+    teams TeamMapping
 
     // Child process stdout
-    stdout         *io.ReadCloser
+    stdout *io.ReadCloser
     // Child process stdin
-    stdin          *io.WriteCloser
+    stdin *io.WriteCloser
 
     // If true, the server will try to restart when cmd exits
-    TryRestart     bool
+    TryRestart bool
 } // <-- struct Handle
 
 // The player has joined the server
@@ -71,7 +71,7 @@ func (self *Handle) pop_player(username string) {
         if player == username {
             self.players_online = append(
                 self.players_online[:i],
-                self.players_online[i+1:]...
+                self.players_online[i+1:]...,
             )
             return
         }
@@ -94,26 +94,26 @@ func (self *Handle) handle_stdin() {
         if str, err := json.Marshal(cmd); err == nil {
             fmt.Fprintf(*self.stdin, "/tellraw @a %s\n", str)
         } else {
-            self.out <- OutputEventError{ &Error{ ERR_TRAWJS } }
+            self.out <- OutputEventError{&Error{ERR_TRAWJS}}
         }
     } // <-- say(cmd)
 
     make_tellraw := func(usr string, t string, tg bool, e bool) []tellraw_cmd {
-        ret := []tellraw_cmd{ { Text: "@", Color: "gold" } }
+        ret := []tellraw_cmd{{Text: "@", Color: "gold"}}
 
         if tg {
             ret[0].Color = "blue"
         }
 
-        ret = append(ret, tellraw_cmd{ Text: usr, Color: "yellow" })
+        ret = append(ret, tellraw_cmd{Text: usr, Color: "yellow"})
         if e {
             ret = append(
                 ret,
-                tellraw_cmd{ Text: " corrects", Color: "dark_gray" },
+                tellraw_cmd{Text: " corrects", Color: "dark_gray"},
             )
         }
-        ret = append(ret, tellraw_cmd{ Text: ": ", Color: "white" })
-        ret = append(ret, tellraw_cmd{ Text: t, Color: "white" })
+        ret = append(ret, tellraw_cmd{Text: ": ", Color: "white"})
+        ret = append(ret, tellraw_cmd{Text: t, Color: "white"})
 
         return ret
     } // <-- make_tellraw(user, text, tg)
@@ -125,6 +125,16 @@ func (self *Handle) handle_stdin() {
         }
         return usr
     } // <-- username(usr)
+
+    make_tellraw_colored := func(ct []ColoredSymbol) []tellraw_cmd {
+
+        ret := []tellraw_cmd{}
+        for _, symbol := range ct {
+            ret = append(ret, tellraw_cmd{Text: string(symbol.Symbol), Color: symbol.Color})
+        }
+
+        return ret
+    } // <-- make_tellraw_colored(user, text, tg)
 
     for {
         ie, open := <-self.in
@@ -178,12 +188,12 @@ func (self *Handle) handle_stdin() {
                     continue
                 }
 
-                self.out <- OutputEventError{ &Error{ ERR_USER } }
+                self.out <- OutputEventError{&Error{ERR_USER}}
                 break
             }
 
             fmt.Fprintf(*self.stdin, "/team remove %s\n", team_name)
-            fmt.Fprintf(*self.stdin, "/team add %s\n", team_name,)
+            fmt.Fprintf(*self.stdin, "/team add %s\n", team_name)
             fmt.Fprintf(
                 *self.stdin,
                 "/team join %s %s\n",
@@ -202,8 +212,13 @@ func (self *Handle) handle_stdin() {
         case InputEventKillServer:
             self.TryRestart = false
             fmt.Fprintf(*self.stdin, "/stop\n")
+        case InputEventColoredChat:
+            say(make_tellraw(event.Username, "", event.Telegram, false))
+            for _, l := range event.ColoredMessage {
+                say(make_tellraw_colored(l))
+            }
         default:
-            self.out <- OutputEventError{ &Error{ ERR_ETYPE } }
+            self.out <- OutputEventError{&Error{ERR_ETYPE}}
         }
     }
     self.stdin = nil
@@ -249,7 +264,7 @@ func (self *Handle) handle_stdout() {
         }
 
         if str, err := reader.ReadString('\n'); err == nil {
-            self.out <- OutputEventLog{ str }
+            self.out <- OutputEventLog{str}
 
             if sm := message_r.FindStringSubmatch(str); sm != nil {
                 self.out <- OutputEventMessage{
@@ -274,11 +289,11 @@ func (self *Handle) handle_stdout() {
             } else if sm := teams_r.FindStringSubmatch(str); sm != nil {
                 self.teams = TeamMapping{}
                 for _, team := range strings.Split(sm[2], ", ") {
-                    self.in <- input_event_req_team{ Team: team[1:len(team)-1] }
+                    self.in <- input_event_req_team{Team: team[1 : len(team)-1]}
                 }
             } else if sm := team_r.FindStringSubmatch(str); sm != nil {
                 self.in <- input_event_update_team{
-                    Team:      sm[1][1:len(sm[1])-1],
+                    Team:      sm[1][1 : len(sm[1])-1],
                     Usernames: strings.Split(sm[3], ", "),
                 }
             } else if sm := joined_r.FindStringSubmatch(str); sm != nil {
@@ -300,7 +315,7 @@ func (self *Handle) handle_stdout() {
                 self.out <- OutputEventServerLoaded{}
             }
         } else {
-            self.out <- OutputEventError{ err }
+            self.out <- OutputEventError{err}
         }
     }
 
@@ -311,7 +326,7 @@ func (self *Handle) handle_stdout() {
 // Monitor the server's state
 func (self *Handle) watch_child() {
     self.out <- OutputEventExit{
-        func () int {
+        func() int {
             // Wait for the child process to finish
             err := self.cmd.Wait()
             self.cmd = nil
@@ -333,7 +348,7 @@ func (self *Handle) watch_child() {
                 return -2
             }
             return 0
-        } (),
+        }(),
     }
 } // <-- Handle::watch_child()
 
@@ -344,7 +359,7 @@ func (self *Handle) IsRunning() bool { return self.cmd != nil }
 // This call is non-blocking and returns nil on success, error on failure
 func (self *Handle) Start() error {
     if self.cmd != nil {
-        return &Error{ ERR_RUNNING }
+        return &Error{ERR_RUNNING}
     }
 
     self.cmd = exec.Command(self.config.Cmdline[0], self.config.Cmdline[1:]...)
@@ -365,7 +380,7 @@ func (self *Handle) Start() error {
     self.TryRestart = true
 
     // Handle the process IO
-    self.stdin  = &pipe_in
+    self.stdin = &pipe_in
     self.stdout = &pipe_out
 
     // Update the teams

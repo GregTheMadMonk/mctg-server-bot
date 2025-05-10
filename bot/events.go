@@ -10,6 +10,13 @@ type OutputEventEditMessage struct {
     Message  string
 } // <-- sturct OutputEventEditMessage
 
+type OutputEventImage struct {
+    Username  string
+    FilePath  string
+    Extension string
+    Content   []byte
+} // <-- struct OutputEventImage
+
 type OutputEventCommand struct {
     Command string
 } // <-- struct OutputEventCommand
@@ -19,9 +26,9 @@ type OutputEventBindUser struct {
     MinecraftName string
 } // <-- struct OutputEventBindUser
 
-type OutputEventListPlayers struct {}
+type OutputEventListPlayers struct{}
 
-type OutputEventKillServer struct {}
+type OutputEventKillServer struct{}
 
 type OutputEventUserError struct {
     Message string
@@ -36,7 +43,7 @@ type OutputEventAPIError struct {
 } // <-- struct OutputEventAPIError
 
 // Terminate the input channel reading loop. For internal use only
-type input_event_terminate struct {}
+type input_event_terminate struct{}
 
 type InputEventSendMessage struct {
     Message string

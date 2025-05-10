@@ -5,6 +5,8 @@ package bot
 import (
     "fmt"
     "log"
+    "regexp"
+    "sort"
     "strings"
     "sync"
 
@@ -14,9 +16,9 @@ import (
 // Bot config
 type Config struct {
     // Telegram bot API token
-    ApiToken      string `json:"api_token"`
+    ApiToken string `json:"api_token"`
     // Telegram channel ID for the bot to live in
-    ChatId        int    `json:"chat_id"`
+    ChatId int `json:"chat_id"`
     // Username of a Telegram user who can issue slash-commands directly to
     // the server
     AdminUsername string `json:"admin_username,omitempty"`
@@ -82,6 +84,12 @@ func (self *bot) Uri(endpoint string) string {
     )
 } // <-- bot::Uri(endpoint)
 
+func (self *bot) FileUri(filePath string) string {
+    return fmt.Sprintf(
+        "%s%s/%s", tg_api.API_FILE_BASE, self.config.ApiToken, filePath,
+    )
+} // <-- bot::FileUri(filePath)
+
 // Send message as a bot. Set `use_md=true` if message contains Markdown
 func (self *bot) send_message(
     message string, use_md bool,
@@ -117,7 +125,7 @@ func (self *bot) edit_message(
         Text:      message,
         ParseMode: "",
     }
-    
+
     if use_md {
         p.ParseMode = tg_api.PM_MARKDOWN
     }
@@ -140,14 +148,26 @@ func (self *bot) handle_updates() {
         Offset int `json:"offset"`
     } // <-- var params
 
-    params := Params{ 0 }
+    params := Params{0}
 
     updateMessage := func(message *tg_api.Message) any {
         if message.Chat.Id != self.config.ChatId {
             return nil
         }
 
-        if len(message.Text) == 0 {
+        // Image are handled only if text not provided
+        if len(message.Text) == 0 && message.Sticker != nil {
+            fp, e, c := self.get_file(message.Sticker.FileId)
+            return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
+        } else if len(message.Text) == 0 && len(message.Photo) > 0 {
+            // Get version of photo with higher resolution
+            sort.Slice(message.Photo, func(i, j int) bool {
+                return message.Photo[i].Width < message.Photo[j].Width
+            })
+
+            fp, e, c := self.get_file(message.Photo[0].FileId)
+            return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
+        } else if len(message.Text) == 0 {
             return nil
         }
 
@@ -177,7 +197,7 @@ func (self *bot) handle_updates() {
         }
 
         if admin && message.Text[0] == '/' {
-            return OutputEventCommand{ message.Text }
+            return OutputEventCommand{message.Text}
         }
 
         return OutputEventMessage{
@@ -194,12 +214,12 @@ func (self *bot) handle_updates() {
 
         if res, err := exch_f(self.Uri("getUpdates"), params); err == nil {
             if !res.Ok {
-                self.out <- OutputEventAPIError{ res }
+                self.out <- OutputEventAPIError{res}
                 continue
             }
 
             for _, update := range res.Result {
-                if params.Offset < update.UpdateId + 1 {
+                if params.Offset < update.UpdateId+1 {
                     params.Offset = update.UpdateId + 1
                 }
 
@@ -219,15 +239,39 @@ func (self *bot) handle_updates() {
                 }
             }
         } else {
-            self.out <- OutputEventRequestError{ err }
+            self.out <- OutputEventRequestError{err}
         }
     }
     self.wg.Done()
     log.Println("Exit bot.bot::handle_updates()")
 } // <-- bot::handle_updates()
 
+func (self *bot) get_file(fileId string) (filePath, extension string, fileContent []byte) {
+    p := tg_api.GetFile{FileId: fileId}
+
+    log.Println("Preparing file for downloading:", fileId)
+    f, err := tg_api.ExchangeIntoWith[tg_api.File, tg_api.GetFile](self.Uri("getFile"), p)
+    if err != nil {
+        log.Println("Failed to get file info", fileId)
+        return "", "", nil
+    }
+
+    file := f.Result
+
+    log.Println("Get file content:", file.FilePath)
+    content, err := tg_api.Exchange(self.FileUri(file.FilePath))
+    if err != nil {
+        log.Println("Failed to get file content", fileId)
+        return "", "", nil
+    }
+
+    extension = regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
+
+    return file.FilePath, extension, *content
+} // <-- bot::get_file(fileId)
+
 func (self *bot) handle_inputs() {
-    handler:
+handler:
     for {
         ie, open := <-self.in
         if !open {
