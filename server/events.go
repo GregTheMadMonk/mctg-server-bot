@@ -28,7 +28,7 @@ type OutputEventPlayerLeft struct {
     Username string
 } // <-- struct OutputEventPlayerLeft
 
-type OutputEventServerLoaded struct {}
+type OutputEventServerLoaded struct{}
 
 type OutputEventListPlayers struct {
     PlayersOnline []string
@@ -52,9 +52,9 @@ type OutputEventExit struct {
 } // <-- struct OutputEventExit
 
 // Terminate the input channel reading loop. For internal use onlu
-type input_event_terminate struct {}
+type input_event_terminate struct{}
 
-type input_event_fetch_teams struct {}
+type input_event_fetch_teams struct{}
 
 type input_event_req_team struct {
     Team string
@@ -71,6 +71,12 @@ type InputEventChat struct {
     Message  string
 } // <-- struct InputEventChat
 
+type InputEventColoredChat struct {
+    Telegram       bool
+    Username       string
+    ColoredMessage [][]ColoredSymbol
+} // <-- struct InputEventColoredChat
+
 type InputEventEditChat struct {
     Username string
     Message  string
@@ -85,6 +91,6 @@ type InputEventBindRename struct {
     DisplayName string
 } // <-- struct InputEventBindTelegramUser
 
-type InputEventListPlayers struct {}
+type InputEventListPlayers struct{}
 
-type InputEventKillServer struct {}
+type InputEventKillServer struct{}
