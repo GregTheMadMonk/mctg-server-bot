@@ -23,10 +23,17 @@ type Config struct {
     LogLines uint `json:"log_lines"`
 } // <-- struct Config
 
+// tellraw hover event
+type hover_event struct {
+    Action string `json:"action"`
+    Value  any    `json:"value"`
+} // <-- struct hover_event
+
 // tellraw command
 type tellraw_cmd struct {
-    Text  string `json:"text"`
-    Color string `json:"color"`
+    Text       string       `json:"text"`
+    Color      string       `json:"color"`
+    HoverEvent *hover_event `json:"hoverEvent,omitempty"`
 }
 
 // Handle for a single Minecraft server instance
@@ -99,7 +106,7 @@ func (self *Handle) handle_stdin() {
     } // <-- say(cmd)
 
     make_tellraw := func(usr string, t string, tg bool, e bool) []tellraw_cmd {
-        ret := []tellraw_cmd{{Text: "@", Color: "gold"}}
+        ret := []tellraw_cmd{{Text: "@", Color: "gold", HoverEvent: nil}}
 
         if tg {
             ret[0].Color = "blue"
@@ -213,10 +220,30 @@ func (self *Handle) handle_stdin() {
             self.TryRestart = false
             fmt.Fprintf(*self.stdin, "/stop\n")
         case InputEventColoredChat:
-            say(make_tellraw(event.Username, "", event.Telegram, false))
-            for _, l := range event.ColoredMessage {
-                say(make_tellraw_colored(l))
+            hover := []tellraw_cmd{
+                tellraw_cmd{
+                    Text:  "Image:\n", // First line has bigger padding
+                    Color: "white",
+                },
             }
+            for _, l := range event.ColoredMessage {
+                hover = append(hover, make_tellraw_colored(l)...)
+                hover = append(
+                    hover, tellraw_cmd{Text: "\n", Color: "white"},
+                )
+            }
+            cmd := make_tellraw(event.Username, "", event.Telegram, false)
+            cmd = append(
+                cmd, tellraw_cmd{
+                    Text:  "[image, hover to view]",
+                    Color: "yellow",
+                    HoverEvent: &hover_event{
+                        Action: "show_text",
+                        Value:  &hover,
+                    },
+                },
+            )
+            say(cmd)
         default:
             self.out <- OutputEventError{&Error{ERR_ETYPE}}
         }
