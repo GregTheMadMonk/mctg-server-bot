@@ -202,8 +202,12 @@ func (self *bot) handle_updates() {
         }
 
         if message.Sticker != nil {
-            im := self.get_image(message.Sticker.FileId)
-            messageEvent.AddImage(im)
+            im, err := self.get_image(message.Sticker.FileId)
+            if err != nil {
+                messageEvent.AddImage(im)
+            } else {
+                messageEvent.AddText("[unsupported sticker]") // Normally this needs to be a separate type...
+            }
         }
 
         if len(message.Photo) > 0 {
@@ -212,7 +216,7 @@ func (self *bot) handle_updates() {
                 return message.Photo[i].Width < message.Photo[j].Width
             })
 
-            im := self.get_image(message.Photo[0].FileId)
+            im, _ := self.get_image(message.Photo[0].FileId)
             messageEvent.AddImage(im)
         }
 
@@ -295,14 +299,14 @@ func (self *bot) decode_image(content []byte, extension string) (image.Image, er
     return im, nil
 }
 
-func (self *bot) get_image(fileId string) image.Image {
+func (self *bot) get_image(fileId string) (image.Image, error) {
     p := tg_api.GetFile{FileId: fileId}
 
     log.Println("Preparing file for downloading:", fileId)
     f, err := tg_api.ExchangeIntoWith[tg_api.File, tg_api.GetFile](self.Uri("getFile"), p)
     if err != nil {
         log.Println("Failed to get file info", fileId)
-        return nil
+        return nil, err
     }
 
     file := f.Result
@@ -311,7 +315,7 @@ func (self *bot) get_image(fileId string) image.Image {
     content, err := tg_api.Exchange(self.FileUri(file.FilePath))
     if err != nil {
         log.Println("Failed to get file content", fileId)
-        return nil
+        return nil, err
     }
 
     extension := regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
@@ -320,10 +324,10 @@ func (self *bot) get_image(fileId string) image.Image {
 
     if err != nil {
         log.Println("Failed to decode image", fileId)
-        return nil
+        return nil, err
     }
 
-    return im
+    return im, nil
 } // <-- bot::get_file(fileId)
 
 func (self *bot) handle_inputs() {
