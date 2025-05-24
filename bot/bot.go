@@ -204,9 +204,10 @@ func (self *bot) handle_updates() {
         if message.Sticker != nil {
             im, err := self.get_image(message.Sticker.FileId)
             if err != nil {
-                messageEvent.AddImage(im)
-            } else {
                 messageEvent.AddText("[unsupported sticker]") // Normally this needs to be a separate type...
+            } else {
+                messageEvent.AddImage(im)
+
             }
         }
 
