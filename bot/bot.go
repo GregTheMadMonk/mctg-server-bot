@@ -3,7 +3,14 @@
 package bot
 
 import (
+    "bytes"
+    "errors"
     "fmt"
+    "golang.org/x/image/webp"
+    "image"
+    "image/gif"
+    "image/jpeg"
+    "image/png"
     "log"
     "regexp"
     "sort"
@@ -155,22 +162,6 @@ func (self *bot) handle_updates() {
             return nil
         }
 
-        // Image are handled only if text not provided
-        if len(message.Text) == 0 && message.Sticker != nil {
-            fp, e, c := self.get_file(message.Sticker.FileId)
-            return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
-        } else if len(message.Text) == 0 && len(message.Photo) > 0 {
-            // Get version of photo with higher resolution
-            sort.Slice(message.Photo, func(i, j int) bool {
-                return message.Photo[i].Width < message.Photo[j].Width
-            })
-
-            fp, e, c := self.get_file(message.Photo[0].FileId)
-            return OutputEventImage{Username: message.From.Username, FilePath: fp, Extension: e, Content: c}
-        } else if len(message.Text) == 0 {
-            return nil
-        }
-
         admin := message.From.Username == self.config.AdminUsername
 
         switch message.Text {
@@ -200,10 +191,36 @@ func (self *bot) handle_updates() {
             return OutputEventCommand{message.Text}
         }
 
-        return OutputEventMessage{
-            Username: message.From.Username,
-            Message:  message.Text,
+        messageEvent := OutputEventMessage{Username: message.From.Username}
+
+        if len(message.Text) > 0 {
+            messageEvent.AddText(message.Text)
         }
+
+        if len(message.Caption) > 0 {
+            messageEvent.AddText(message.Caption)
+        }
+
+        if message.Sticker != nil {
+            im := self.get_image(message.Sticker.FileId)
+            messageEvent.AddImage(im)
+        }
+
+        if len(message.Photo) > 0 {
+            // Get version of photo with higher resolution
+            sort.Slice(message.Photo, func(i, j int) bool {
+                return message.Photo[i].Width < message.Photo[j].Width
+            })
+
+            im := self.get_image(message.Photo[0].FileId)
+            messageEvent.AddImage(im)
+        }
+
+        if len(messageEvent.GetMessage()) == 0 {
+            return nil
+        }
+
+        return messageEvent
     } // <-- updateMessage(message)
 
     exch_f := tg_api.ExchangeIntoWith[[]tg_api.Update, Params]
@@ -246,14 +263,46 @@ func (self *bot) handle_updates() {
     log.Println("Exit bot.bot::handle_updates()")
 } // <-- bot::handle_updates()
 
-func (self *bot) get_file(fileId string) (filePath, extension string, fileContent []byte) {
+func (self *bot) decode_image(content []byte, extension string) (image.Image, error) {
+    contentBuffer := bytes.NewBuffer(content)
+
+    var im image.Image
+    var err error
+
+    switch extension {
+    case ".webp":
+        im, err = webp.Decode(contentBuffer)
+        break
+    case ".jpg":
+        im, err = jpeg.Decode(contentBuffer)
+        break
+    case ".png":
+        im, err = png.Decode(contentBuffer)
+        break
+    case ".gif":
+        im, err = gif.Decode(contentBuffer)
+        break
+    default:
+        err = errors.New("unsupported image format")
+        break
+    }
+
+    if err != nil {
+        log.Println("Failed to decode image:", err)
+        return nil, err
+    }
+
+    return im, nil
+}
+
+func (self *bot) get_image(fileId string) image.Image {
     p := tg_api.GetFile{FileId: fileId}
 
     log.Println("Preparing file for downloading:", fileId)
     f, err := tg_api.ExchangeIntoWith[tg_api.File, tg_api.GetFile](self.Uri("getFile"), p)
     if err != nil {
         log.Println("Failed to get file info", fileId)
-        return "", "", nil
+        return nil
     }
 
     file := f.Result
@@ -262,12 +311,19 @@ func (self *bot) get_file(fileId string) (filePath, extension string, fileConten
     content, err := tg_api.Exchange(self.FileUri(file.FilePath))
     if err != nil {
         log.Println("Failed to get file content", fileId)
-        return "", "", nil
+        return nil
     }
 
-    extension = regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
+    extension := regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
 
-    return file.FilePath, extension, *content
+    im, err := self.decode_image(*content, extension)
+
+    if err != nil {
+        log.Println("Failed to decode image", fileId)
+        return nil
+    }
+
+    return im
 } // <-- bot::get_file(fileId)
 
 func (self *bot) handle_inputs() {

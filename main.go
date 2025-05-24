@@ -5,7 +5,6 @@ import (
     "fmt"
     "github.com/gregthemadmonk/mctg-server-bot/bot"
     "github.com/gregthemadmonk/mctg-server-bot/server"
-    "github.com/gregthemadmonk/mctg-server-bot/utils"
     "log"
     "os"
 ) // <-- import
@@ -133,11 +132,10 @@ func main() {
                 if event.Tellraw {
                     // Server has the mod installed, this message should be
                     // re-relayed to the server too
-                    srv.In() <- server.InputEventChat{
+                    srv.In() <- *server.InputEventChat{
                         Telegram: false,
                         Username: event.Username,
-                        Message:  event.Message,
-                    }
+                    }.Build().AddText(event.Message)
                 }
             case server.OutputEventPlayerDeath:
                 thebot.In() <- bot.InputEventSendMessage{
@@ -160,10 +158,15 @@ func main() {
         case bot_out := <-thebot.Out():
             switch event := bot_out.(type) {
             case bot.OutputEventMessage:
-                srv.In() <- server.InputEventChat{
+                chatEvent, err := server.InputEventChat{
                     Telegram: true,
                     Username: event.Username,
-                    Message:  event.Message,
+                }.Build().AddMessageParts(event.GetMessage())
+
+                if err != nil {
+                    log.Println(err)
+                } else {
+                    srv.In() <- *chatEvent
                 }
             case bot.OutputEventEditMessage:
                 srv.In() <- server.InputEventEditChat{
@@ -173,17 +176,6 @@ func main() {
             case bot.OutputEventCommand:
                 srv.In() <- server.InputEventCommand{
                     Command: event.Command,
-                }
-            case bot.OutputEventImage:
-                //fileName := strings.ReplaceAll(event.FilePath, "/", "")
-                //os.WriteFile(fileName, event.Content, os.ModeExclusive)
-                m := utils.ConvertImageToColoredText(event.Content, event.Extension)
-                if m != nil {
-                    srv.In() <- server.InputEventColoredChat{
-                        Telegram:       true,
-                        Username:       event.Username,
-                        ColoredMessage: m,
-                    }
                 }
 
             case bot.OutputEventListPlayers:

@@ -56,6 +56,7 @@ type Message struct {
     Chat      Chat        `json:"chat"`
     Photo     []PhotoSize `json:"photo"`
     Sticker   *Sticker    `json:"sticker"`
+    Caption   string      `json:"caption"`
 } // <-- struct Message
 
 type Update struct {

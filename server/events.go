@@ -1,5 +1,10 @@
 package server
 
+import (
+    "errors"
+    "image"
+)
+
 type OutputEventLog struct {
     Message string
 } // <-- struct OutputEventLog
@@ -68,14 +73,39 @@ type input_event_update_team struct {
 type InputEventChat struct {
     Telegram bool
     Username string
-    Message  string
+    message  []any // string or image.Image
 } // <-- struct InputEventChat
 
-type InputEventColoredChat struct {
-    Telegram       bool
-    Username       string
-    ColoredMessage [][]ColoredSymbol
-} // <-- struct InputEventColoredChat
+func (self InputEventChat) Build() *InputEventChat {
+    return &self
+}
+
+func (self *InputEventChat) GetMessage() []any { return self.message }
+
+func (self *InputEventChat) AddText(text string) *InputEventChat {
+    self.message = append(self.message, text)
+    return self
+}
+
+func (self *InputEventChat) AddImage(image image.Image) *InputEventChat {
+    self.message = append(self.message, image)
+    return self
+}
+
+// Add parts of message. Only string or image.Image types
+func (self *InputEventChat) AddMessageParts(parts []any) (*InputEventChat, error) {
+    for _, part := range parts {
+        switch part := part.(type) {
+        case string:
+            self.message = append(self.message, part)
+        case image.Image:
+            self.message = append(self.message, part)
+        default:
+            return nil, errors.New("InputEventChat: only strings or image are supported")
+        }
+    }
+    return self, nil
+}
 
 type InputEventEditChat struct {
     Username string

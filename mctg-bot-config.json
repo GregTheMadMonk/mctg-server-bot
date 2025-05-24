@@ -5,7 +5,7 @@
         "admin_username": "optional"
     },
     "server": {
-        "cmdline":   [ "bash", "run.sh", "nogui" ],
+        "cmdline":   [ "cmd.exe", "/C", "./run.bat", "nogui"],
         "log_lines": 15
     }
 }

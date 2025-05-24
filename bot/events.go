@@ -1,21 +1,32 @@
 package bot
 
+import "image"
+
 type OutputEventMessage struct {
     Username string
-    Message  string
+    message  []any // string or image.Image
 } // <-- struct OutputEventMessage
+
+func (self OutputEventMessage) Build() *OutputEventMessage {
+    return &self
+}
+
+func (self *OutputEventMessage) GetMessage() []any { return self.message }
+
+func (self *OutputEventMessage) AddText(text string) *OutputEventMessage {
+    self.message = append(self.message, text)
+    return self
+}
+
+func (self *OutputEventMessage) AddImage(image image.Image) *OutputEventMessage {
+    self.message = append(self.message, image)
+    return self
+}
 
 type OutputEventEditMessage struct {
     Username string
     Message  string
 } // <-- sturct OutputEventEditMessage
-
-type OutputEventImage struct {
-    Username  string
-    FilePath  string
-    Extension string
-    Content   []byte
-} // <-- struct OutputEventImage
 
 type OutputEventCommand struct {
     Command string

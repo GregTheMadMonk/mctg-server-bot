@@ -6,6 +6,7 @@ import (
     "bufio"
     "encoding/json"
     "fmt"
+    "image"
     "io"
     "log"
     "os/exec"
@@ -172,12 +173,50 @@ func (self *Handle) handle_stdin() {
             )
             log.Println(self.teams)
         case InputEventChat:
-            for _, l := range strings.Split(event.Message, "\n") {
+            var txt []string
+            var txtImgs []*TextImage
+            for _, mp := range event.GetMessage() {
+                switch mp.(type) {
+                case string:
+                    txt = append(txt, strings.Split(mp.(string), "\n")...)
+                case image.Image:
+                    txtImgs = append(txtImgs, MakeTextImage(mp.(image.Image)))
+                }
+            }
+
+            for _, l := range txt {
                 say(
                     make_tellraw(
                         username(event.Username), l, event.Telegram, false,
                     ),
                 )
+            }
+
+            for _, img := range txtImgs {
+                hover := []tellraw_cmd{
+                    {
+                        Text:  "Image:\n", // First line has bigger padding
+                        Color: "white",
+                    },
+                }
+                for _, l := range img.ColoredText {
+                    hover = append(hover, make_tellraw_colored(l)...)
+                    hover = append(
+                        hover, tellraw_cmd{Text: "\n", Color: "white"},
+                    )
+                }
+                cmd := make_tellraw(event.Username, "", event.Telegram, false)
+                cmd = append(
+                    cmd, tellraw_cmd{
+                        Text:  "[image, hover to view]",
+                        Color: "yellow",
+                        HoverEvent: &hover_event{
+                            Action: "show_text",
+                            Value:  &hover,
+                        },
+                    },
+                )
+                say(cmd)
             }
         case InputEventEditChat:
             for _, l := range strings.Split(event.Message, "\n") {
@@ -219,31 +258,6 @@ func (self *Handle) handle_stdin() {
         case InputEventKillServer:
             self.TryRestart = false
             fmt.Fprintf(*self.stdin, "/stop\n")
-        case InputEventColoredChat:
-            hover := []tellraw_cmd{
-                tellraw_cmd{
-                    Text:  "Image:\n", // First line has bigger padding
-                    Color: "white",
-                },
-            }
-            for _, l := range event.ColoredMessage {
-                hover = append(hover, make_tellraw_colored(l)...)
-                hover = append(
-                    hover, tellraw_cmd{Text: "\n", Color: "white"},
-                )
-            }
-            cmd := make_tellraw(event.Username, "", event.Telegram, false)
-            cmd = append(
-                cmd, tellraw_cmd{
-                    Text:  "[image, hover to view]",
-                    Color: "yellow",
-                    HoverEvent: &hover_event{
-                        Action: "show_text",
-                        Value:  &hover,
-                    },
-                },
-            )
-            say(cmd)
         default:
             self.out <- OutputEventError{&Error{ERR_ETYPE}}
         }
