@@ -3,11 +3,10 @@ package main
 import (
     "encoding/json"
     "fmt"
-    "log"
-    "os"
-
     "github.com/gregthemadmonk/mctg-server-bot/bot"
     "github.com/gregthemadmonk/mctg-server-bot/server"
+    "log"
+    "os"
 ) // <-- import
 
 type Config struct {
@@ -37,7 +36,7 @@ func main() {
         log.Fatalln("Could not initialize server:", srv_err)
     }
 
-    tg_msg_name := func (usr string) string {
+    tg_msg_name := func(usr string) string {
         tg_name := srv.ReverseRename(usr)
         if tg_name == usr {
             return usr
@@ -118,26 +117,25 @@ func main() {
                 for _, player := range event.PlayersOnline {
                     msg += fmt.Sprintf("* %s\n", tg_msg_name(player))
                 }
-                thebot.In() <- bot.InputEventSendMessage{ Message: msg }
+                thebot.In() <- bot.InputEventSendMessage{Message: msg}
             case server.OutputEventLog:
                 log.Println(event.Message)
             case server.OutputEventMessage:
                 thebot.In() <- bot.InputEventSendMessage{
-                     Message: fmt.Sprintf(
-                         "%s: %s",
-                         tg_msg_name(event.Username),
-                         event.Message,
-                     ),
+                    Message: fmt.Sprintf(
+                        "%s: %s",
+                        tg_msg_name(event.Username),
+                        event.Message,
+                    ),
                 }
 
                 if event.Tellraw {
                     // Server has the mod installed, this message should be
                     // re-relayed to the server too
-                    srv.In() <- server.InputEventChat{
+                    srv.In() <- *server.InputEventChat{
                         Telegram: false,
                         Username: event.Username,
-                        Message:  event.Message,
-                    }
+                    }.Build().AddText(event.Message)
                 }
             case server.OutputEventPlayerDeath:
                 thebot.In() <- bot.InputEventSendMessage{
@@ -160,10 +158,15 @@ func main() {
         case bot_out := <-thebot.Out():
             switch event := bot_out.(type) {
             case bot.OutputEventMessage:
-                srv.In() <- server.InputEventChat{
+                chatEvent, err := server.InputEventChat{
                     Telegram: true,
                     Username: event.Username,
-                    Message:  event.Message,
+                }.Build().AddMessageParts(event.GetMessage())
+
+                if err != nil {
+                    log.Println(err)
+                } else {
+                    srv.In() <- *chatEvent
                 }
             case bot.OutputEventEditMessage:
                 srv.In() <- server.InputEventEditChat{
@@ -174,6 +177,7 @@ func main() {
                 srv.In() <- server.InputEventCommand{
                     Command: event.Command,
                 }
+
             case bot.OutputEventListPlayers:
                 srv.In() <- server.InputEventListPlayers{}
             case bot.OutputEventKillServer:

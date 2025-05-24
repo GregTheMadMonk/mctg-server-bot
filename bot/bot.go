@@ -3,8 +3,17 @@
 package bot
 
 import (
+    "bytes"
+    "errors"
     "fmt"
+    "golang.org/x/image/webp"
+    "image"
+    "image/gif"
+    "image/jpeg"
+    "image/png"
     "log"
+    "regexp"
+    "sort"
     "strings"
     "sync"
 
@@ -14,9 +23,9 @@ import (
 // Bot config
 type Config struct {
     // Telegram bot API token
-    ApiToken      string `json:"api_token"`
+    ApiToken string `json:"api_token"`
     // Telegram channel ID for the bot to live in
-    ChatId        int    `json:"chat_id"`
+    ChatId int `json:"chat_id"`
     // Username of a Telegram user who can issue slash-commands directly to
     // the server
     AdminUsername string `json:"admin_username,omitempty"`
@@ -82,6 +91,12 @@ func (self *bot) Uri(endpoint string) string {
     )
 } // <-- bot::Uri(endpoint)
 
+func (self *bot) FileUri(filePath string) string {
+    return fmt.Sprintf(
+        "%s%s/%s", tg_api.API_FILE_BASE, self.config.ApiToken, filePath,
+    )
+} // <-- bot::FileUri(filePath)
+
 // Send message as a bot. Set `use_md=true` if message contains Markdown
 func (self *bot) send_message(
     message string, use_md bool,
@@ -117,7 +132,7 @@ func (self *bot) edit_message(
         Text:      message,
         ParseMode: "",
     }
-    
+
     if use_md {
         p.ParseMode = tg_api.PM_MARKDOWN
     }
@@ -140,14 +155,10 @@ func (self *bot) handle_updates() {
         Offset int `json:"offset"`
     } // <-- var params
 
-    params := Params{ 0 }
+    params := Params{0}
 
     updateMessage := func(message *tg_api.Message) any {
         if message.Chat.Id != self.config.ChatId {
-            return nil
-        }
-
-        if len(message.Text) == 0 {
             return nil
         }
 
@@ -177,13 +188,44 @@ func (self *bot) handle_updates() {
         }
 
         if admin && message.Text[0] == '/' {
-            return OutputEventCommand{ message.Text }
+            return OutputEventCommand{message.Text}
         }
 
-        return OutputEventMessage{
-            Username: message.From.Username,
-            Message:  message.Text,
+        messageEvent := OutputEventMessage{Username: message.From.Username}
+
+        if len(message.Text) > 0 {
+            messageEvent.AddText(message.Text)
         }
+
+        if len(message.Caption) > 0 {
+            messageEvent.AddText(message.Caption)
+        }
+
+        if message.Sticker != nil {
+            im, err := self.get_image(message.Sticker.FileId)
+            if err != nil {
+                messageEvent.AddText("[unsupported sticker]") // Normally this needs to be a separate type...
+            } else {
+                messageEvent.AddImage(im)
+
+            }
+        }
+
+        if len(message.Photo) > 0 {
+            // Get version of photo with higher resolution
+            sort.Slice(message.Photo, func(i, j int) bool {
+                return message.Photo[i].Width < message.Photo[j].Width
+            })
+
+            im, _ := self.get_image(message.Photo[0].FileId)
+            messageEvent.AddImage(im)
+        }
+
+        if len(messageEvent.GetMessage()) == 0 {
+            return nil
+        }
+
+        return messageEvent
     } // <-- updateMessage(message)
 
     exch_f := tg_api.ExchangeIntoWith[[]tg_api.Update, Params]
@@ -194,12 +236,12 @@ func (self *bot) handle_updates() {
 
         if res, err := exch_f(self.Uri("getUpdates"), params); err == nil {
             if !res.Ok {
-                self.out <- OutputEventAPIError{ res }
+                self.out <- OutputEventAPIError{res}
                 continue
             }
 
             for _, update := range res.Result {
-                if params.Offset < update.UpdateId + 1 {
+                if params.Offset < update.UpdateId+1 {
                     params.Offset = update.UpdateId + 1
                 }
 
@@ -219,15 +261,78 @@ func (self *bot) handle_updates() {
                 }
             }
         } else {
-            self.out <- OutputEventRequestError{ err }
+            self.out <- OutputEventRequestError{err}
         }
     }
     self.wg.Done()
     log.Println("Exit bot.bot::handle_updates()")
 } // <-- bot::handle_updates()
 
+func (self *bot) decode_image(content []byte, extension string) (image.Image, error) {
+    contentBuffer := bytes.NewBuffer(content)
+
+    var im image.Image
+    var err error
+
+    switch extension {
+    case ".webp":
+        im, err = webp.Decode(contentBuffer)
+        break
+    case ".jpg":
+        im, err = jpeg.Decode(contentBuffer)
+        break
+    case ".png":
+        im, err = png.Decode(contentBuffer)
+        break
+    case ".gif":
+        im, err = gif.Decode(contentBuffer)
+        break
+    default:
+        err = errors.New("unsupported image format")
+        break
+    }
+
+    if err != nil {
+        log.Println("Failed to decode image:", err)
+        return nil, err
+    }
+
+    return im, nil
+}
+
+func (self *bot) get_image(fileId string) (image.Image, error) {
+    p := tg_api.GetFile{FileId: fileId}
+
+    log.Println("Preparing file for downloading:", fileId)
+    f, err := tg_api.ExchangeIntoWith[tg_api.File, tg_api.GetFile](self.Uri("getFile"), p)
+    if err != nil {
+        log.Println("Failed to get file info", fileId)
+        return nil, err
+    }
+
+    file := f.Result
+
+    log.Println("Get file content:", file.FilePath)
+    content, err := tg_api.Exchange(self.FileUri(file.FilePath))
+    if err != nil {
+        log.Println("Failed to get file content", fileId)
+        return nil, err
+    }
+
+    extension := regexp.MustCompile("\\.\\w+").FindString(file.FilePath)
+
+    im, err := self.decode_image(*content, extension)
+
+    if err != nil {
+        log.Println("Failed to decode image", fileId)
+        return nil, err
+    }
+
+    return im, nil
+} // <-- bot::get_file(fileId)
+
 func (self *bot) handle_inputs() {
-    handler:
+handler:
     for {
         ie, open := <-self.in
         if !open {

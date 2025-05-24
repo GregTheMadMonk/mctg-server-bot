@@ -30,11 +30,33 @@ type Chat struct {
     Id int `json:"id"`
 } // <-- struct Chat
 
+type PhotoSize struct {
+    FileId   string `json:"file_id"`
+    Width    int    `json:"width"`
+    Height   int    `json:"height"`
+    MimeType string `json:"mime_type"`
+} // <-- struct PhotoSize
+
+type Sticker struct {
+    FileId    string     `json:"file_id"`
+    Width     int        `json:"width"`
+    Height    int        `json:"height"`
+    Thumbnail *PhotoSize `json:"thumbnail"`
+} // <-- struct Sticker
+
+type File struct {
+    FileId   string `json:"file_id"`
+    FilePath string `json:"file_path"`
+} // <-- struct File
+
 type Message struct {
-    MessageId int    `json:"message_id"`
-    From      User   `json:"from"`
-    Text      string `json:"text"`
-    Chat      Chat   `json:"chat"`
+    MessageId int         `json:"message_id"`
+    From      User        `json:"from"`
+    Text      string      `json:"text"`
+    Chat      Chat        `json:"chat"`
+    Photo     []PhotoSize `json:"photo"`
+    Sticker   *Sticker    `json:"sticker"`
+    Caption   string      `json:"caption"`
 } // <-- struct Message
 
 type Update struct {
@@ -58,3 +80,7 @@ type EditMessageText struct {
     Text      string `json:"text"`
     ParseMode string `json:"parse_mode,omitempty"`
 } // <-- struct EditMessageText
+
+type GetFile struct {
+    FileId string `json:"file_id"`
+}
